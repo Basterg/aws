@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
+
 type Excursion struct {
 	ExcursionID  string `json:"excursionID"`
 	CountryUpper string `json:"countryUpper"`
