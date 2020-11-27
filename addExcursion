@@ -1,0 +1,77 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+)
+
+type Excursion struct {
+	ExcursionID  string `json:"excursionID"`
+	CountryUpper string `json:"countryUpper"`
+	CountryLower string `json:"countryLower"`
+	Description  string `json:"description"`
+	Town 		 string `json:"town"`
+}
+
+type ExcursionToAdd struct {
+	PK 			string `json:"PK"`
+	SK 			string `json:"SK"`
+	GSI1PK 		string `json:"GSI1PK"`
+	GSI1SK 		string `json:"GSI1SK"`
+	Country 	string `json:"Country"`
+	Description string `json:"Description"`
+	Town 		string `json:"Town"`
+}
+
+func  Handler(request events.APIGatewayProxyRequest)(events.APIGatewayProxyResponse, error) {
+	sess := session.Must(session.NewSession())
+	ddb := dynamodb.New(sess)
+
+	body := request.Body
+	fmt.Println("Received body: ", body)
+
+	var thisExcursion Excursion
+	var excursionToAdd ExcursionToAdd
+	json.Unmarshal([]byte(body), &thisExcursion)
+	fmt.Println("Excursion to add: ", thisExcursion )
+
+	excursionToAdd = ExcursionToAdd{
+		PK:  	 	 fmt.Sprintf("EXC#ID%s", thisExcursion.ExcursionID),
+		SK: 	 	 fmt.Sprintf("EXC#ID%s", thisExcursion.ExcursionID),
+		GSI1PK:  	 thisExcursion.CountryUpper,
+		GSI1SK:  	 fmt.Sprintf("%s#EXC#ID%s",thisExcursion.CountryUpper, thisExcursion.ExcursionID),
+		Country: 	 thisExcursion.CountryLower,
+		Description: thisExcursion.Description,
+		Town: 		 thisExcursion.Town,
+	}
+
+	av, err := dynamodbattribute.MarshalMap(excursionToAdd)
+	if err != nil {
+		fmt.Println("Got error marshaling map: ")
+		fmt.Println(err.Error())
+		return events.APIGatewayProxyResponse{Body: "Post error", StatusCode: 500}, nil
+	}
+
+	input := &dynamodb.PutItemInput{
+		Item:      			 av,
+		ConditionExpression: aws.String("attribute_not_exists(PK)"),
+		TableName: 			 aws.String("Excursions"),
+	}
+
+	_, err = ddb.PutItem(input)
+	if err != nil {
+		return events.APIGatewayProxyResponse{Body: "Put error" , StatusCode: 200}, nil
+	}
+	return events.APIGatewayProxyResponse{Body: fmt.Sprintf("%v", av) , StatusCode: 200}, nil
+
+}
+
+func main()  {
+	lambda.Start(Handler)
+}
