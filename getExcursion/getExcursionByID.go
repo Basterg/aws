@@ -40,10 +40,10 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	input := &dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"PK": {
-				S: aws.String(fmt.Sprintf("EXC#ID%s", excID)),
+				S: aws.String(fmt.Sprintf("EXC#%s", excID)),
 			},
 			"SK": {
-				S: aws.String(fmt.Sprintf("EXC#ID%s", excID)),
+				S: aws.String(fmt.Sprintf("EXC#%s", excID)),
 			},
 		},
 		ExpressionAttributeNames: expr.Names(),

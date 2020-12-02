@@ -9,15 +9,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	uuid "github.com/satori/go.uuid"
+	"strings"
 )
 
 type Excursion struct {
-	ExcursionID  string `json:"excursionID"`
-	CountryUpper string `json:"countryUpper"`
-	Country      string `json:"country"`
-	Description  string `json:"description"`
-	TownUpper    string `json:"townUpper"`
-	Town         string `json:"town"`
+	Country     string `json:"country"`
+	Description string `json:"description"`
+	Town        string `json:"town"`
 }
 
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -26,18 +25,20 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	body := request.Body
 
+	excID, _ := uuid.NewV1()
+
 	var thisExcursion Excursion
 	json.Unmarshal([]byte(body), &thisExcursion)
 
 	var excursionToAdd = map[string]string{
-		"PK":          fmt.Sprintf("EXC#ID%s", thisExcursion.ExcursionID),
-		"SK":          fmt.Sprintf("EXC#ID%s", thisExcursion.ExcursionID),
-		"GSI1PK":      thisExcursion.CountryUpper,
-		"GSI1SK":      fmt.Sprintf("%s#EXC#ID%s", thisExcursion.TownUpper, thisExcursion.ExcursionID),
+		"PK":          fmt.Sprintf("EXC#%s", excID),
+		"SK":          fmt.Sprintf("EXC#%s", excID),
+		"GSI1PK":      strings.ToUpper(thisExcursion.Country),
+		"GSI1SK":      fmt.Sprintf("%s#EXC#%s", strings.ToUpper(thisExcursion.Town), excID),
 		"Country":     thisExcursion.Country,
 		"Description": thisExcursion.Description,
 		"Town":        thisExcursion.Town,
-		"ExcursionID": thisExcursion.ExcursionID,
+		"ExcursionID": fmt.Sprintf("%s", excID),
 	}
 
 	av, err := dynamodbattribute.MarshalMap(excursionToAdd)
